@@ -26,22 +26,14 @@ export class TypescriptCdkCicdCodeartifactStack extends Stack {
       domainName: "aws-typescript-sample-domain"
     });
 
-    const npmMirrorCodeartifactRepository = new CfnRepository(this, "NpmMirrorCodeArtifactRepository", {
-      domainName: codeartifactDomain.domainName,
-      repositoryName: "npm-mirror",
-      description: "Mirror of npm for local caching",
-      externalConnections: ["public:npmjs"]
-    });
-
     const npmPrivateCodeartifactRepository = new CfnRepository(this, "PipPrivateCodeArtifactRepository", {
       domainName: codeartifactDomain.domainName,
       repositoryName: "npm",
       description: "Private npm repo",
-      upstreams: [npmMirrorCodeartifactRepository.repositoryName]
+      externalConnections: ["public:npmjs"]
     });
 
-    npmMirrorCodeartifactRepository.addDependsOn(codeartifactDomain);
-    npmPrivateCodeartifactRepository.addDependsOn(npmMirrorCodeartifactRepository);
+    npmPrivateCodeartifactRepository.addDependsOn(codeartifactDomain);
 
     const accessLogsBucket = new Bucket(this, "AccessLogsBucket", {
       bucketName: "sample-typescript-cdk-access-logs-" + this.account,
