@@ -4,6 +4,7 @@
 import {RemovalPolicy, Stack, StackProps} from 'aws-cdk-lib';
 import {Construct} from 'constructs';
 import {Repository} from 'aws-cdk-lib/aws-codecommit';
+import * as kms from 'aws-cdk-lib/aws-kms';
 import {CfnDomain, CfnRepository} from 'aws-cdk-lib/aws-codeartifact';
 import {BlockPublicAccess, Bucket, BucketEncryption} from "aws-cdk-lib/aws-s3";
 import {Artifact, Pipeline} from "aws-cdk-lib/aws-codepipeline";
@@ -35,10 +36,15 @@ export class TypescriptCdkCicdCodeartifactStack extends Stack {
 
     npmPrivateCodeartifactRepository.addDependsOn(codeartifactDomain);
 
+    const codebuildEncryptionKey = new kms.Key(this, 'codeBuildEncryptionKey', {
+      enableKeyRotation: true,
+    });
+
     const accessLogsBucket = new Bucket(this, "AccessLogsBucket", {
       bucketName: "sample-typescript-cdk-access-logs-" + this.account,
       blockPublicAccess: BlockPublicAccess.BLOCK_ALL,
-      encryption: BucketEncryption.S3_MANAGED,
+      encryption: BucketEncryption.KMS,
+      encryptionKey:codebuildEncryptionKey,
       enforceSSL: true,
       removalPolicy: RemovalPolicy.DESTROY,
       autoDeleteObjects: true
@@ -54,7 +60,8 @@ export class TypescriptCdkCicdCodeartifactStack extends Stack {
       bucketName: "sample-typescript-cdk-artifact-" + this.account,
       serverAccessLogsBucket: accessLogsBucket,
       blockPublicAccess: BlockPublicAccess.BLOCK_ALL,
-      encryption: BucketEncryption.S3_MANAGED,
+      encryption: BucketEncryption.KMS,
+      encryptionKey:codebuildEncryptionKey,
       enforceSSL: true,
       removalPolicy: RemovalPolicy.DESTROY,
       autoDeleteObjects: true
@@ -63,7 +70,7 @@ export class TypescriptCdkCicdCodeartifactStack extends Stack {
     const pipeline = new Pipeline(this, "PackagePipeline", {
       pipelineName: "typescript-sample-pipeline",
       restartExecutionOnUpdate: true,
-      artifactBucket: pipelineArtifactBucket
+      artifactBucket: pipelineArtifactBucket,
     });
 
     const sourceOutput = new Artifact();
@@ -252,12 +259,14 @@ export class TypescriptCdkCicdCodeartifactStack extends Stack {
         id: "AwsSolutions-IAM5",
         reason: "Defined by a default policy",
         appliesTo: [
-            "Action::s3:Abort*",
-            "Action::s3:DeleteObject*",
-            "Action::s3:GetBucket*",
-            "Action::s3:GetObject*",
-            "Action::s3:List*",
-            "Resource::<PipelineArtifactBucketD127CCF6.Arn>/*"
+          "Action::s3:Abort*",
+          "Action::s3:DeleteObject*",
+          "Action::s3:GetBucket*",
+          "Action::s3:GetObject*",
+          "Action::s3:List*",
+          "Action::kms:GenerateDataKey*",
+          "Action::kms:ReEncrypt*",
+          "Resource::<PipelineArtifactBucketD127CCF6.Arn>/*"
         ]
       }
     ]);
@@ -272,6 +281,8 @@ export class TypescriptCdkCicdCodeartifactStack extends Stack {
           "Action::s3:GetBucket*",
           "Action::s3:GetObject*",
           "Action::s3:List*",
+          "Action::kms:GenerateDataKey*",
+          "Action::kms:ReEncrypt*",
           "Resource::<PipelineArtifactBucketD127CCF6.Arn>/*"
         ]
       }
@@ -287,13 +298,11 @@ export class TypescriptCdkCicdCodeartifactStack extends Stack {
           "Action::s3:GetBucket*",
           "Action::s3:GetObject*",
           "Action::s3:List*",
+          "Action::kms:GenerateDataKey*",
+          "Action::kms:ReEncrypt*",
           "Resource::<PipelineArtifactBucketD127CCF6.Arn>/*"
         ]
       }
-    ]);
-
-    NagSuppressions.addResourceSuppressionsByPath(this, "/TypescriptCdkCicdCodeartifactStack/RunUnitTests/Resource", [
-      {id: "AwsSolutions-CB4", reason: "False-positive. Encryption key is applied",}
     ]);
 
     NagSuppressions.addResourceSuppressionsByPath(this, "/TypescriptCdkCicdCodeartifactStack/RunUnitTestsPolicy/Resource", [
@@ -317,13 +326,11 @@ export class TypescriptCdkCicdCodeartifactStack extends Stack {
           "Action::s3:GetBucket*",
           "Action::s3:GetObject*",
           "Action::s3:List*",
+          "Action::kms:GenerateDataKey*",
+          "Action::kms:ReEncrypt*",
           "Resource::<PipelineArtifactBucketD127CCF6.Arn>/*"
         ]
       }
-    ]);
-
-    NagSuppressions.addResourceSuppressionsByPath(this, "/TypescriptCdkCicdCodeartifactStack/SelfMutate/Resource", [
-      {id: "AwsSolutions-CB4", reason: "False-positive. Encryption key is applied",}
     ]);
 
     NagSuppressions.addResourceSuppressionsByPath(this, "/TypescriptCdkCicdCodeartifactStack/SelfMutatePolicy/Resource", [
@@ -348,13 +355,11 @@ export class TypescriptCdkCicdCodeartifactStack extends Stack {
           "Action::s3:GetBucket*",
           "Action::s3:GetObject*",
           "Action::s3:List*",
+          "Action::kms:GenerateDataKey*",
+          "Action::kms:ReEncrypt*",
           "Resource::<PipelineArtifactBucketD127CCF6.Arn>/*"
         ]
       }
-    ]);
-
-    NagSuppressions.addResourceSuppressionsByPath(this, "/TypescriptCdkCicdCodeartifactStack/BuildSamplePackage/sample-package/Resource", [
-      {id: "AwsSolutions-CB4", reason: "False-positive. Encryption key is applied",}
     ]);
 
     NagSuppressions.addResourceSuppressionsByPath(this, "/TypescriptCdkCicdCodeartifactStack/BuildSamplePackage/sample-packagecodeArtifactPolicy/Resource", [
